@@ -17,8 +17,6 @@
         <canvas id="canvas"></canvas>
 
         <div id="filters"></div>
-
-        <button id="shuffle">Sort Data</button>
       </div>
     </div>
 
@@ -29,7 +27,7 @@
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
 	<script type="text/javascript" src="http://bgrins.github.io/spectrum/spectrum.js"></script>
 
-	<script type="text/javascript" src="https://npmcdn.com/chart.js@2.7.1/dist/Chart.bundle.js"></script>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.4.0/Chart.bundle.min.js"></script>
 	<script type="text/javascript" src="js/utils.js"></script>
 
 
@@ -41,19 +39,12 @@
 
 			
 			barChartData: '',
-			newdataset: [],
-			currentOrder: [],
-			currentDataset: 0,
-			largest:0,
-			smallest:0,
-			pushindex:0,
 
 			init: function() {
 				this.setupChart();
 				this.bindEvents();
 			},
 			bindEvents: function() {
-
 				var ctx = document.getElementById("canvas").getContext("2d");
 	            window.myBar = new Chart(ctx, {
 	                type: 'bar',
@@ -89,37 +80,6 @@
 				        }
 	                }
 	            });
-
-	            Chart.plugins.register({
-				  beforeUpdate: function(chart) {
-				    if (chart.options.sort) {
-				      let dataArray = chart.data.datasets[0].data.slice();
-				      let dataIndexes = dataArray.map((d, i) => i);
-				      dataIndexes.sort((a, b) => {
-				        return dataArray[a] - dataArray[b];
-				      });
-
-				      // sort data array as well
-				      //dataArray.sort((a, b) => a - b);
-
-				      // At this point dataIndexes is sorted by value of the data, so we know how the indexes map to each other
-				      let meta = chart.getDatasetMeta(0);
-				      let newMeta = [];
-				      let labels = chart.data.labels;
-				      let newLabels = [];
-				      
-				      meta.data.forEach((a, i) => {
-				        newMeta[dataIndexes[i]] = a;
-				        newLabels[dataIndexes[i]] = chart.data.labels[i];
-				      });
-
-				      meta.data = newMeta;
-				      chart.data.datasets[0].data = dataArray;
-				      chart.data.labels = newLabels;
-				    }
-				  }
-				});
-
 			},
 
 			resetCanvas: function(){
