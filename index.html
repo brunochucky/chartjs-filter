@@ -1,0 +1,269 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>Chart Gauge</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+	<link href="https://fonts.googleapis.com/css?family=Open+Sans:400,700" rel="stylesheet">
+	<link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+	<link rel="stylesheet" type="text/css" href="http://bgrins.github.io/spectrum/spectrum.css" />
+	<link rel="stylesheet" type="text/css" href="css/style.css" />
+</head>
+<body>
+    <div class="container-fluid">
+      <div class="row px-5">
+      	
+        <canvas id="canvas"></canvas>
+
+        <div id="filters"></div>
+
+        <button id="shuffle">Sort Data</button>
+      </div>
+    </div>
+
+
+    
+	<script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+	<script type="text/javascript" src="http://bgrins.github.io/spectrum/spectrum.js"></script>
+
+	<script type="text/javascript" src="https://npmcdn.com/chart.js@2.7.1/dist/Chart.bundle.js"></script>
+	<script type="text/javascript" src="js/utils.js"></script>
+
+
+	<script type="text/javascript">
+		
+        
+
+		var ChartHelper = {
+
+			
+			barChartData: '',
+			newdataset: [],
+			currentOrder: [],
+			currentDataset: 0,
+			largest:0,
+			smallest:0,
+			pushindex:0,
+
+			init: function() {
+				this.setupChart();
+				this.bindEvents();
+			},
+			bindEvents: function() {
+
+				var ctx = document.getElementById("canvas").getContext("2d");
+	            window.myBar = new Chart(ctx, {
+	                type: 'bar',
+	                data: ChartHelper.barChartData,
+	                options: {
+	                    responsive: true,
+	                    legend: {
+	                        position: 'top',
+	                    },
+	                    title: {
+	                        display: true,
+	                        text: 'Usuários Influentes'
+	                    },
+	                    labels: {
+				           filter: function(legendItem, data) {
+				                return legendItem.index == 1 
+				           }
+					    },
+	                    scales: {
+				            yAxes: [{
+				                ticks: {
+				                    beginAtZero:true
+				                },
+				                gridLines: {
+						          display: false
+						        },
+				            }],
+				            xAxes: [{
+				                gridLines: {
+						          color: 'black'
+						        }
+				            }]
+				        }
+	                }
+	            });
+
+	            Chart.plugins.register({
+				  beforeUpdate: function(chart) {
+				    if (chart.options.sort) {
+				      let dataArray = chart.data.datasets[0].data.slice();
+				      let dataIndexes = dataArray.map((d, i) => i);
+				      dataIndexes.sort((a, b) => {
+				        return dataArray[a] - dataArray[b];
+				      });
+
+				      // sort data array as well
+				      //dataArray.sort((a, b) => a - b);
+
+				      // At this point dataIndexes is sorted by value of the data, so we know how the indexes map to each other
+				      let meta = chart.getDatasetMeta(0);
+				      let newMeta = [];
+				      let labels = chart.data.labels;
+				      let newLabels = [];
+				      
+				      meta.data.forEach((a, i) => {
+				        newMeta[dataIndexes[i]] = a;
+				        newLabels[dataIndexes[i]] = chart.data.labels[i];
+				      });
+
+				      meta.data = newMeta;
+				      chart.data.datasets[0].data = dataArray;
+				      chart.data.labels = newLabels;
+				    }
+				  }
+				});
+
+			},
+
+			resetCanvas: function(){
+			  $('#canvas').remove();
+			  $('.container-fluid .row').prepend('<canvas id="canvas"><canvas>');
+			},
+
+			filterAxis: function() {
+
+				ChartHelper.resetCanvas();
+				ChartHelper.init();
+				
+				$('#filters input').each(function(index,el) {
+					if($(el).prop('checked') == false) {
+						Object.keys(ChartHelper.barChartData.labels).filter(function(index) {
+							if(ChartHelper.barChartData.labels[index] == $(el).prop('id')){
+								ChartHelper.barChartData.labels.splice(index,1);
+								Object.keys(ChartHelper.barChartData.datasets).filter(function(index2) {
+									ChartHelper.barChartData.datasets[index2].data.splice(index,1);
+								});
+							}
+						});
+					}
+				});
+
+				window.myBar.update();
+			},
+
+			getBrands: function() {
+				
+
+				$.ajax({
+				  url: "./data/brands.json",
+				  dataType: 'json',
+				  async: false,
+				  success: function(data) {
+					ChartHelper.brands = [];
+					$.each( data, function( key, val ) {
+							
+							if(ChartHelper.barChartData.labels.indexOf(val.name) === -1){
+								ChartHelper.barChartData.labels.push( val.name );
+								ChartHelper.brands.push(val);
+							}
+							
+					});
+				  }
+				});
+
+				
+			},
+
+			getUsers: function() {
+				$.ajax({
+				  url: "./data/users.json",
+				  dataType: 'json',
+				  async: false,
+				  success: function(data) {
+					ChartHelper.users = [];
+					  $.each( data, function( key, val ) {
+					  		ChartHelper.users.push(val);
+					  		ChartHelper.setupDatasets(val);
+					  });
+				  }
+				});
+			},
+
+			getInteractions: function() {
+				
+				$.ajax({
+				  url: "./data/interactions.json",
+				  dataType: 'json',
+				  async: false,
+				  success: function(data) {
+					ChartHelper.interactions = [];
+					  $.each( data, function( key, val ) {
+					  		ChartHelper.interactions.push(val);
+					  });
+				  }
+				});
+
+			},
+
+			setupDatasets: function(user) {
+				var totalInte;
+				var userdata = [];
+				var i;
+				$.each(ChartHelper.barChartData.labels, function( key, val ){
+					totalInte = 0;
+					$.each(ChartHelper.interactions, function( key2, val2 ){
+						if(user.id == val2.user) {
+							Object.keys(ChartHelper.brands).filter(function(index) {
+							    if(ChartHelper.brands[index].id == val2.brand && ChartHelper.brands[index].name == val)
+							    	totalInte++;
+							});
+						}
+					});
+
+					userdata[key] = totalInte;
+				});
+
+				var newdata = {
+	                label: user.login.username,		                
+	                borderWidth: 1,
+	                backgroundColor: ChartHelper.getRandColor(),
+	                data: userdata
+	            };
+
+				this.barChartData.datasets.push(newdata);
+			},
+
+			setupChart: function() {
+
+		        this.barChartData = {
+		        	labels: [],
+		            datasets: []
+		        };
+
+				this.getBrands();
+				this.getInteractions();
+				this.getUsers();			
+
+		        
+			},
+
+			getRandColor: function(){
+			    var brightness = 4;
+			    var rgb = [Math.random() * 256, Math.random() * 256, Math.random() * 256];
+			    var mix = [brightness*51, brightness*51, brightness*51]; //51 => 255/5
+			    var mixedrgb = [rgb[0] + mix[0], rgb[1] + mix[1], rgb[2] + mix[2]].map(function(x){ return Math.round(x/2.0)})
+			    return "rgb(" + mixedrgb.join(",") + ")";
+			}
+		};
+
+
+		$(document).ready(function() {
+			// ready
+			ChartHelper.init();
+
+			$('#filters').empty();
+            $.each(window.myBar.data.labels, function(index,el) {
+            	$('#filters').append('<label for="'+myBar.data.labels[index]+'"><input type="checkbox" id="'+myBar.data.labels[index]+'" value="'+myBar.data.labels[index]+'" onclick="ChartHelper.filterAxis()" checked />'+myBar.data.labels[index]+'</label>');
+            });
+
+		});
+	</script>
+</body>
+</html>	
